@@ -65,24 +65,29 @@ export GOOGLE_CLIENT_SECRET="your-client-secret"
 npm run authorize
 ```
 
-脚本会输出一个 URL，在浏览器中打开并完成授权，将授权码粘贴回终端。Token 会保存到 `token.json`。
+脚本会输出一个授权 URL，在浏览器中打开并完成授权。授权成功后浏览器会自动回调到本地服务（`http://localhost:3456/oauth2callback`），无需手动粘贴 code。
+
+Token 会拆分保存为两个文件：
+- `refresh_token.json` — 长期有效的刷新令牌
+- `access_token.json` — 短期访问令牌（自动刷新）
 
 ### 2.2 Token 存储
 
-- 默认存储在项目根目录的 `token.json`
-- 可通过环境变量 `GMAIL_TOKEN_PATH` 自定义路径
-- Docker 环境下建议挂载到持久化 volume
+- 默认存储在当前工作目录
+- 可通过环境变量 `GMAIL_DATA_DIR` 自定义存储目录
+- Docker 环境下通过 bind mount 挂载本地 `./data/` 目录
 
 ### 2.3 Token 刷新
 
-- Token 包含 `refresh_token`，服务器会自动刷新 `access_token`
-- 刷新后新 token 自动保存到文件
+- 服务器启动时加载 `refresh_token.json` 和 `access_token.json`
+- `access_token` 过期时自动使用 `refresh_token` 刷新，并保存到 `access_token.json`
 - 如果 `refresh_token` 失效（如用户撤销授权），需要重新运行 `npm run authorize`
 
 ### 2.4 安全注意事项
 
-- **不要** 将 `token.json` 提交到 Git（已在 `.gitignore` 中排除）
+- **不要** 将 token 文件提交到 Git（已在 `.gitignore` 中排除）
 - **不要** 将 Client Secret 硬编码到代码中
+- Docker 环境下 `refresh_token.json` 以只读（`:ro`）方式挂载，防止容器被入侵后篡改
 - 建议在生产环境中使用 Secret Manager 管理凭据
 - 定期检查 Google Cloud Console 中的已授权访问
 
@@ -108,22 +113,21 @@ npm start
 | `MCP_HOST` | `0.0.0.0` | 监听地址 |
 | `GOOGLE_CLIENT_ID` | — | OAuth Client ID（必填） |
 | `GOOGLE_CLIENT_SECRET` | — | OAuth Client Secret（必填） |
-| `GMAIL_TOKEN_PATH` | `./token.json` | Token 文件路径 |
+| `GMAIL_DATA_DIR` | `.`（当前目录） | Token 文件存储目录 |
 
 ## 4. Docker 部署
 
 ### 4.1 首次获取 Token
 
-Docker 环境下，需要先在本地获取 token，再复制到容器 volume：
+Docker 环境下，需要先在本地获取 token：
 
 ```bash
-# 本地获取 token
+# 1. 本地获取 token
 npm run authorize
 
-# 复制 token 到 docker volume
-docker compose up -d
-docker compose cp token.json gmail-mcp:/data/token.json
-docker compose restart gmail-mcp
+# 2. 创建 data 目录并移动 token 文件
+mkdir -p data
+mv refresh_token.json access_token.json data/
 ```
 
 ### 4.2 使用 docker-compose
@@ -142,6 +146,10 @@ MCP_PORT=3000
 docker compose up -d
 ```
 
+Token 挂载方式：
+- `./data/refresh_token.json` → 容器内 `/data/refresh_token.json`（**只读**）
+- `./data/access_token.json` → 容器内 `/data/access_token.json`（可写，用于自动刷新）
+
 ### 4.3 直接使用 Docker
 
 ```bash
@@ -152,8 +160,9 @@ docker run -d \
   -p 3000:3000 \
   -e GOOGLE_CLIENT_ID="your-client-id" \
   -e GOOGLE_CLIENT_SECRET="your-client-secret" \
-  -e GMAIL_TOKEN_PATH="/data/token.json" \
-  -v gmail-data:/data \
+  -e GMAIL_DATA_DIR="/data" \
+  -v ./data/refresh_token.json:/data/refresh_token.json:ro \
+  -v ./data/access_token.json:/data/access_token.json \
   gmail-mcp
 ```
 
