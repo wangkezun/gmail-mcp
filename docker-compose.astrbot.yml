@@ -1,0 +1,20 @@
+services:
+  gmail-mcp:
+    build: .
+    environment:
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GMAIL_DATA_DIR=/data
+      - MCP_PORT=3000
+      - MCP_HOST=0.0.0.0
+    volumes:
+      - ./data/refresh_token.json:/data/refresh_token.json:ro
+      - ./data/access_token.json:/data/access_token.json
+    networks:
+      - astrbot
+    restart: unless-stopped
+
+networks:
+  astrbot:
+    name: ${ASTRBOT_NETWORK:-astrbot_default}
+    external: true
