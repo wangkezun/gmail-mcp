@@ -166,6 +166,28 @@ docker run -d \
   gmail-mcp
 ```
 
+### 4.4 接入 Astrbot 网络
+
+使用专用的 compose 文件，无需暴露端口：
+
+```bash
+docker compose -f docker-compose.astrbot.yml up -d
+```
+
+在 `.env` 中配置网络名（默认 `astrbot_default`）：
+
+```env
+ASTRBOT_NETWORK=astrbot_default
+```
+
+Astrbot 内部访问地址：`http://gmail-mcp:3000/mcp`
+
+查看 astrbot 实际网络名：
+
+```bash
+docker network ls | grep astrbot
+```
+
 ## 5. MCP 客户端配置
 
 MCP endpoint: `http://<host>:3000/mcp`
