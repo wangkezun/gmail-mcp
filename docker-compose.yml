@@ -1,0 +1,15 @@
+services:
+  gmail-mcp:
+    build: .
+    ports:
+      - "${MCP_PORT:-3000}:3000"
+    environment:
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GMAIL_DATA_DIR=/data
+      - MCP_PORT=3000
+      - MCP_HOST=0.0.0.0
+    volumes:
+      - ./data/refresh_token.json:/data/refresh_token.json:ro
+      - ./data/access_token.json:/data/access_token.json
+    restart: unless-stopped

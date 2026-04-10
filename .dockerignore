@@ -1,0 +1,7 @@
+node_modules/
+dist/
+token.json
+.env
+.git/
+.claude/
+*.log
